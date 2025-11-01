@@ -417,8 +417,8 @@ export function displaySyncedLyrics(data: Song, trackUri: string) {
   setHighlightInterval(
     window.setInterval(() => {
       const progress = window.Spicetify.Player.getProgress();
-      const seconds = progress / 1000;
-
+      const seconds = progress / 1000;      
+      
       let activeLineIndex = -1;
       for (let i = currentLyrics.length - 1; i >= 0; i--) {
         if (currentLyrics[i].time <= seconds) {
@@ -426,33 +426,43 @@ export function displaySyncedLyrics(data: Song, trackUri: string) {
           break;
         }
       }
-
+      
       const newActiveLineId = activeLineIndex !== -1 ? `lyric-line-${activeLineIndex}` : null;
-
+      
       if (newActiveLineId && newActiveLineId !== currentHighlightedLine) {
         if (currentHighlightedLine) {
           const prevActiveEl = document.getElementById(currentHighlightedLine);
           if (prevActiveEl) prevActiveEl.classList.remove('active');
         }
         const newActiveEl = document.getElementById(newActiveLineId);
-        if (newActiveEl){
+        if (newActiveEl) {
           newActiveEl.classList.add('active');
-
-          // If the user has scrolled recently, pause auto-recenter.
-          const now = Date.now();
-          const userPaused = (now - lastUserScrollAt) < USER_SCROLL_PAUSE_MS;
-
-          if (!userPaused) {
-            // mark that this is a programmatic scroll so the onscroll handler ignores it
-            markProgrammaticScroll();
-            newActiveEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }
         }
         setCurrentHighlightedLine(newActiveLineId);
       } else if (!newActiveLineId && currentHighlightedLine) {
         const prevActiveEl = document.getElementById(currentHighlightedLine);
         if (prevActiveEl) prevActiveEl.classList.remove('active');
         setCurrentHighlightedLine(null);
+      }
+
+      // --- Pre-scrolling logic ---
+      const now = Date.now();
+      const userPaused = (now - lastUserScrollAt) < USER_SCROLL_PAUSE_MS;
+
+      if (!userPaused) {
+        const nextLineIndex = activeLineIndex + 1;
+        if (nextLineIndex < currentLyrics.length) {
+          const nextLineTime = currentLyrics[nextLineIndex].time;
+          const timeUntilNextLine = nextLineTime - seconds;
+
+          if (timeUntilNextLine > 0 && timeUntilNextLine < 0.8) {
+            const nextLineEl = document.getElementById(`lyric-line-${nextLineIndex}`);
+            if (nextLineEl) {
+              markProgrammaticScroll();
+              nextLineEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+          }
+        }
       }
     }, 250), // Interval can be a bit faster for better accuracy
   );
