@@ -1,0 +1,14 @@
+[{
+    "name": "Simple Lyrics",
+    "description": "Simple lyrics extension for Spicetify.",
+    "preview": "preview.gif",
+    "main": "./built/custom_lyrics.js",
+    "readme": "README.md",
+    "branch": "main",
+    "authors": [
+        { "name": "AFcoder10", "url": "https://github.com/AFcoder10" }
+    ],
+    "tags": [
+        "lyrics"
+    ]
+}]
