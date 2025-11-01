@@ -450,7 +450,7 @@ export function displaySyncedLyrics(data: Song, trackUri: string) {
           const nextLineTime = currentLyrics[nextLineIndex].time;
           const timeUntilNextLine = nextLineTime - seconds;
 
-          if (timeUntilNextLine > 0 && timeUntilNextLine <= 0.7) {
+          if (timeUntilNextLine > 0 && timeUntilNextLine < 0.8) {
             const nextLineEl = document.getElementById(`lyric-line-${nextLineIndex}`);
             if (nextLineEl) {
               markProgrammaticScroll();
