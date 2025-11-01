@@ -6,19 +6,20 @@ declare global {
 function debug(message:string){
     Spicetify.showNotification(message);
 }
-export async function searchId(artists:Array<string>,title:string,album_name:string,duration:number):Promise<number | undefined> {
+export async function searchId(artists:Array<string>,title:string,duration:number):Promise<number | undefined> {
     const baseUrl = 'https://apis.netstart.cn/music/search';
     try{
         // Limit to 10 searchs, to avoid processing multiple unrelated songs
-        let queryParams = 'keywords=' + title;
-
+        let keywords = title;
         for (const artist of artists){
-            queryParams += ' ' + artist;
+            keywords += ' ' + artist;
         }
         
-        queryParams += '&limit=10';
+        const queryParams = new URLSearchParams({
+            keywords: keywords,
+            limit: '10'
+        });
         const url = `${baseUrl}?${queryParams.toString()}`;
-        //Spicetify.showNotification(url);
         const response = await fetch(url);
         const data = await response.json();
         let songId:number = 0;
@@ -75,6 +76,10 @@ export async function getNELyrics(songId:number|undefined){
         debug("got something")
         return text
     }catch(e){
-        
+        if (e instanceof Error) {
+            console.error("Simple-Lyrics: Failed to fetch from NetEase API.", e.message);
+        } else {
+            console.error("Simple-Lyrics: An unknown error occurred while fetching from NetEase API.", e);
+        }
     }
 }

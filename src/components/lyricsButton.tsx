@@ -1,5 +1,5 @@
 
-import { lyricsPageActive } from '../state/lyricsState';
+import { lyricsPageActive, setLyricsPageActive } from '../state/lyricsState';
 import { toggleLyricsPage } from './lyricsPage';
 
 declare global {
@@ -12,10 +12,10 @@ function changeButtonColor(){
   const icon = document.getElementById("lyrics-button");
   if (icon instanceof SVGElement) {
     if (lyricsPageActive){
-      icon.style.color = "green";
+      icon.style.color = "var(--spice-button-active, #1db954)";
     }
     else{
-      icon.style.color = "white";
+      icon.style.color = "var(--text-subdued, #b3b3b3)";
     }
   }
   
@@ -93,7 +93,6 @@ export function createLyricsButton() {
       e.preventDefault();
       e.stopPropagation();
       toggleLyricsPage();
-      changeButtonColor();
     });
 
     button.addEventListener('mouseenter', () => {
@@ -103,7 +102,9 @@ export function createLyricsButton() {
     });
 
     button.addEventListener('mouseleave', () => {
-      button.style.color = 'var(--text-subdued, #b3b3b3)';
+      if (!lyricsPageActive) {
+        button.style.color = 'var(--text-subdued, #b3b3b3)';
+      }
       button.style.backgroundColor = 'transparent';
       button.style.transform = 'scale(1)';
     });
@@ -142,7 +143,6 @@ export function createFloatingButton() {
 
   button.addEventListener('click', (e) => {
       toggleLyricsPage();
-      changeButtonColor();
   });
 
   button.addEventListener('mouseenter', () => {
@@ -156,4 +156,11 @@ export function createFloatingButton() {
   });
 
   document.body.appendChild(button);
+
+  // Listen for changes to lyricsPageActive state
+  const originalSet = setLyricsPageActive;
+  (window as any).setLyricsPageActive = (active: boolean) => {
+    originalSet(active);
+    changeButtonColor();
+  };
 }

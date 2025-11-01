@@ -1,4 +1,3 @@
-import { resumeRotation } from '../components/lyricsPage/utils';
 import {
   currentLyrics,
   highlightInterval,
@@ -23,8 +22,6 @@ import {
   lastUserScrollAt,
   USER_SCROLL_PAUSE_MS,
   markProgrammaticScroll,
-  rotationDeg,
-  isAlbumRotating,
 } from '../state/lyricsState';
 import { getNELyrics, searchId } from './netEasyFetcher';
 import { processFullLyrics } from './translate';
@@ -135,7 +132,7 @@ export async function fetchAndDisplayLyrics() {
       artistsname.push(artist.name);
     }
 
-    const NEsongId: number|undefined = await searchId(artistsname, title, duration, album_name);
+    const NEsongId: number|undefined = await searchId(artistsname, title, duration);
     //const NEdata = getNELyrics(NEsongId);
 
     if (window.Spicetify.Player.data?.item?.uri !== requestedTrackUri) {
@@ -182,16 +179,16 @@ async function trySearchAPI(artists:Array<string>,
   careSearchPlainLyrics:string):Promise<boolean>{
   const baseUrl = 'https://lrclib.net/api/search';
   try {
-    let queryParams = 'q=' + title;
+    let keywords = title;
     for (const artist of artists){
-      queryParams += ' ' + artist;
+      keywords += ' ' + artist;
     }
+    const queryParams = new URLSearchParams({ q: keywords });
     const url = `${baseUrl}?${queryParams.toString()}`;
 
     if (window.Spicetify.Player.data?.item?.uri !== requestedTrackUri) {
       return true; // Return true to prevent the error message from showing
     }
-    //const processed = url.replace(/%20/g, '+').replace(/%28/g, '(').replace(/%29/g, ')');
     const response = await fetch(url);
     const songs: Song[] = await response.json();
 
@@ -449,12 +446,6 @@ export function displaySyncedLyrics(data: Song, trackUri: string) {
             // mark that this is a programmatic scroll so the onscroll handler ignores it
             markProgrammaticScroll();
             newActiveEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            // Activate again the album spin, since we're certain that music is playing (some sort of fix to album stops scrolling)
-            const albumImg = document.getElementById("lyrics-album-image");
-            if (!albumImg) return;
-            if (!isAlbumRotating){
-              resumeRotation(albumImg, rotationDeg); 
-            }
           }
         }
         setCurrentHighlightedLine(newActiveLineId);

@@ -236,15 +236,6 @@ export function createLyricsPageUI(mainView: Element) {
             </select>
           </div>
   
-          <!-- Setting Option: Album Rotation -->
-          <div class="setting-option" style="display: flex; justify-content: space-between; align-items: center;">
-            <span>Album Rotation</span>
-            <label class="switch">
-              <input type="checkbox" id="setting-toggle-rotation" checked>
-              <span class="slider round"></span>
-            </label>
-          </div>
-
           <!-- Translation -->
           <div class="setting-option" style="display: flex; justify-content: space-between; align-items: center;">
               <span>Translation</span>

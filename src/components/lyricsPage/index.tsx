@@ -6,16 +6,13 @@ import {
   setLyricsPageActive,
   setCurrentHighlightedLine,
   setHighlightInterval,
-  setMemorizedSelectedText,
-  rotationDeg,
-  setRotationDegree,
-  setContinousCheckPlaying,
+  setMemorizedSelectedText
 } from '../../state/lyricsState';
 import { fetchAndDisplayLyrics } from '../../utils/lyricsFetcher';
 import { updateAlbumImage } from '../../utils/albumImageFetcher';
 import { createLyricsPageUI } from '../lyricsPage/ui';
-import { attachEventHandlers, continousCheckPlayingStatus } from '../lyricsPage/eventHandlers';
-import { handleStartHeart, setupAlbumSwiper, updateRotationKeyframes } from './utils';
+import { attachEventHandlers, detachEventHandlers, trackInplace } from '../lyricsPage/eventHandlers';
+import { handleStartHeart, setupAlbumSwiper } from './utils';
 
 // Create lyrics page with proper cleanup
 export function showLyricsPage() {
@@ -67,19 +64,9 @@ export function showLyricsPage() {
   // Fetch and display lyrics
   fetchAndDisplayLyrics();
 
-  // If the song is playing before the lyrics page set it rotating, otherwise no
-  updateRotationKeyframes(rotationDeg);
-  const albumImg = document.getElementById("lyrics-album-image");
-  if (!albumImg) return;
-  albumImg.classList.add("rotating");
-  if (Spicetify.Player.isPlaying() != true){
-    // We still inject the animation but set it not playing
-    albumImg.classList.remove("rotating");
-  }
-
   setupAlbumSwiper();
+  trackInplace();
   handleStartHeart();
-  continousCheckPlayingStatus();
 }
 
 // Properly close the lyrics page
@@ -94,15 +81,16 @@ export function closeLyricsPage() {
     setHighlightInterval(null);
   }
   setCurrentHighlightedLine(null);
+
+  // Detach event handlers to prevent memory leaks
+  detachEventHandlers();
   setMemorizedSelectedText(null);
 
   // Remove lyrics page elements
   document.getElementById('custom-lyrics-page')?.remove();
   document.getElementById('custom-lyrics-style')?.remove();
-  document.getElementById('custom-lyrics-background-style')?.remove();
-  document.getElementById('album-rotation-style')?.remove();
+  document.getElementById('custom-lyrics-background-style')?.remove();  document.getElementById('rotation-keyframes-style')?.remove();
   document.getElementById('custom-lyrics-settings-style')?.remove(); // Remove settings
-  setRotationDegree(0); // When closing the tab just reset the rotation
 
   // Restore original content visibility
   if (originalPageState.children) {

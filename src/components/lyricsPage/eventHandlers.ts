@@ -1,4 +1,5 @@
 import {
+    getPrevTrackImageUrl, getNextTrackImageUrl,
     isDragging,
     startX,
     startY,
@@ -11,24 +12,44 @@ import {
     setScrolledAndStopped,
     setIdle,
     setPreferredLanguage,
-    rotationDeg,
-    setRotationDegree,
     currentLyrics,
     setTranslationEnabled,
     ignoreProgrammaticScroll,
     lastProgrammaticScrollAt,
     PROGRAMMATIC_SCROLL_GRACE_MS,
     USER_SCROLL_PAUSE_MS,
-    setLastUserScrollAt,
-    isThisSongLiked,
-    setIsThisSongLiked,
-    continousCheckPlaying,
-    lyricsPageActive,
-    isAlbumRotating,
+    setLastUserScrollAt, isThisSongLiked, setIsThisSongLiked
 } from '../../state/lyricsState';
 import { fetchAndDisplayLyrics, handleTranslations, resetToCurrentHighlightedLine } from '../../utils/lyricsFetcher';
-import { closeLyricsPage, showLyricsPage } from './index';
-import { handleStartHeart, pauseRotation, resumeRotation, setupAlbumSwiper } from './utils';
+import { handleStartHeart } from './utils';
+
+let onSwipeMove: ((e: MouseEvent) => void) | null = null;
+let onSwipeEnd: ((e: MouseEvent) => void) | null = null;
+
+export function detachEventHandlers() {
+    if (onSwipeMove) {
+        document.removeEventListener('mousemove', onSwipeMove);
+        onSwipeMove = null;
+    }
+    if (onSwipeEnd) {
+        document.removeEventListener('mouseup', onSwipeEnd);
+        document.removeEventListener('mouseleave', onSwipeEnd);
+        onSwipeEnd = null;
+    }
+}
+
+export function trackInplace(){
+  const track = document.getElementById('album-art-track') as HTMLElement;
+  if (track) {
+      // Instantly reset position without animation
+      track.style.transition = 'none';
+      track.style.transform = 'translateX(-33.3333%)'; 
+      // A tiny timeout can help ensure the style is applied before re-enabling transition later
+      setTimeout(() => {
+          track.style.transition = 'transform 0.3s ease-out';
+      }, 50);
+  }
+}
 
 export function attachEventHandlers(lyricsContainer: HTMLElement) {
     // Attach selection and drag events to the scrollable lyrics container
@@ -36,6 +57,8 @@ export function attachEventHandlers(lyricsContainer: HTMLElement) {
     if (!lyricsScrollContainer) return;
     
     lyricsScrollContainer.addEventListener('mousedown', (e) => {
+      // This is part of the album swiper logic, but needs to be here
+      // to correctly handle drag state on the lyrics.
       setStartX(e.clientX);
       setStartY(e.clientY);
       setIsDragging(false);
@@ -194,24 +217,6 @@ export function attachEventHandlers(lyricsContainer: HTMLElement) {
           });
         }
       
-        // Album Rotation Toggle
-        const rotationToggle = document.getElementById('setting-toggle-rotation') as HTMLInputElement;
-        if (rotationToggle) {
-          rotationToggle.addEventListener('change', () => {
-            const albumImg = document.getElementById("lyrics-album-image");
-            if (!albumImg) return;
-          
-            if (rotationToggle.checked) {
-              // If it's checked, resume rotation
-              resumeRotation(albumImg, rotationDeg); 
-            } else {
-              // If it's unchecked, pause rotation
-              const savedAngle = pauseRotation(albumImg);
-              setRotationDegree(savedAngle);
-            }
-          });
-        }
-
         const translateToggle = document.getElementById('setting-toggle-translation') as HTMLInputElement;
         if (translateToggle) {
           // Load saved preference
@@ -265,40 +270,71 @@ export function attachEventHandlers(lyricsContainer: HTMLElement) {
 
     likeButton.addEventListener('mouseenter', () => (likeButton.style.backgroundColor = 'rgba(255,255,255,0.1)'));
     likeButton.addEventListener('mouseleave', () => (likeButton.style.backgroundColor = 'transparent'));
-}
 
-let intervalId: ReturnType<typeof setInterval> | undefined;
+    // Album Swiper Logic
+    const swiperContainer = document.getElementById('album-art-swiper-container');
+    const track = document.getElementById('album-art-track') as HTMLElement;
+    const nextAlbumImg = document.getElementById('next-album-image') as HTMLImageElement;
+    const prevAlbumImg = document.getElementById('prev-album-image') as HTMLImageElement;
 
-export function continousCheckPlayingStatus(){
-  // Add a 5 seconds for checking the song status
-    if(lyricsPageActive){
-      clearInterval(intervalId);
-      intervalId = setInterval(() => {
-        let isPlaying = checkSongStatus();
-        const albumImg = document.getElementById("lyrics-album-image");
-        if (isPlaying == true && isAlbumRotating != true){
-          const saveAngle = pauseRotation(albumImg);
-          setRotationDegree(saveAngle + 1); // +1 to compensate the lag
-          resumeRotation(albumImg,rotationDeg);
-        } else if (isPlaying == false){
-          const saveAngle = pauseRotation(albumImg);
-          setRotationDegree(saveAngle);
-        }
-        if (typeof lyricsPageActive){
-          //Spicetify.showNotification((typeof lyricsPageActive));
-        }else{
-          //Spicetify.showNotification();
-        }
-        if (typeof lyricsPageActive === "undefined" || !lyricsPageActive) {
-          clearInterval(intervalId);
-        }
-      }, 10000);
-    }
-    else {
-      clearInterval(intervalId);
-    }
-}
+    if (!swiperContainer || !track || !nextAlbumImg || !prevAlbumImg) return;
 
-function checkSongStatus() {
-  return Spicetify.Player.isPlaying()
+    let isSwiping = false;
+    let swipeStartX = 0;
+    let currentTranslate = 0;
+    const SWIPE_THRESHOLD = swiperContainer.offsetWidth / 2;
+    const CENTER_OFFSET_PERCENT = -33.3333;
+
+    const onSwipeStart = (e: MouseEvent) => {
+        isSwiping = true;
+        swipeStartX = e.clientX;
+        track.style.transition = 'none';
+        swiperContainer.style.cursor = 'grabbing';
+
+        const nextImageUrl = getNextTrackImageUrl();
+        const prevImageUrl = getPrevTrackImageUrl();
+        nextAlbumImg.src = nextImageUrl || '';
+        prevAlbumImg.src = prevImageUrl || '';
+
+        e.preventDefault();
+    };
+
+    onSwipeMove = (e: MouseEvent) => {
+        if (!isSwiping) return;
+        const currentX = e.clientX;
+        currentTranslate = currentX - swipeStartX;
+        
+        track.style.transform = `translateX(calc(${CENTER_OFFSET_PERCENT}% + ${currentTranslate}px))`;
+    };
+
+    onSwipeEnd = () => {
+        if (!isSwiping) return;
+        isSwiping = false;
+
+        track.style.transition = 'transform 0.3s ease-out';
+        swiperContainer.style.cursor = 'grab';
+
+        if (currentTranslate < -SWIPE_THRESHOLD && nextAlbumImg.src) {
+            track.style.transform = `translateX(-66.6666%)`;
+            Spicetify.Player.next();
+        } else if (currentTranslate > SWIPE_THRESHOLD && prevAlbumImg.src) {
+            track.style.transform = `translateX(0%)`;
+            if (Spicetify.Player.getProgress() > 3000) {
+                Spicetify.Player.back();
+                Spicetify.Player.back();
+            } else {
+                Spicetify.Player.back();
+            }
+        } else {
+            track.style.transform = `translateX(${CENTER_OFFSET_PERCENT}%)`;
+        }
+        currentTranslate = 0;
+    };
+
+    swiperContainer.addEventListener('mousedown', onSwipeStart);
+    // Add listeners to the document to catch mouse movements/releases outside the element
+    // These are cleaned up in detachEventHandlers
+    document.addEventListener('mousemove', onSwipeMove);
+    document.addEventListener('mouseup', onSwipeEnd);
+    document.addEventListener('mouseleave', onSwipeEnd);
 }
