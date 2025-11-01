@@ -1,5 +1,5 @@
 [{
-    "name": "Simple Lyrics",
+    "name": "Simple Lyrics Extension",
     "description": "Simple lyrics extension for Spicetify.",
     "preview": "preview.gif",
     "main": "./built/custom_lyrics.js",
