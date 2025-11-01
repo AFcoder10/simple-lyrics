@@ -9,10 +9,8 @@ import {
   setMemorizedSelectedText
 } from '../../state/lyricsState';
 import { fetchAndDisplayLyrics } from '../../utils/lyricsFetcher';
-import { updateAlbumImage } from '../../utils/albumImageFetcher';
 import { createLyricsPageUI } from '../lyricsPage/ui';
-import { attachEventHandlers, detachEventHandlers, trackInplace } from '../lyricsPage/eventHandlers';
-import { handleStartHeart, setupAlbumSwiper } from './utils';
+import { attachEventHandlers, detachEventHandlers } from '../lyricsPage/eventHandlers';
 
 // Create lyrics page with proper cleanup
 export function showLyricsPage() {
@@ -55,18 +53,12 @@ export function showLyricsPage() {
 
   lyricsContainer.setAttribute('tabindex', '0'); // Make it focusable
   lyricsContainer.focus();
-
-  updateAlbumImage();
   
   // Attach all event handlers
   attachEventHandlers(lyricsContainer);
 
   // Fetch and display lyrics
   fetchAndDisplayLyrics();
-
-  setupAlbumSwiper();
-  trackInplace();
-  handleStartHeart();
 }
 
 // Properly close the lyrics page
@@ -89,8 +81,6 @@ export function closeLyricsPage() {
   // Remove lyrics page elements
   document.getElementById('custom-lyrics-page')?.remove();
   document.getElementById('custom-lyrics-style')?.remove();
-  document.getElementById('custom-lyrics-background-style')?.remove();  document.getElementById('rotation-keyframes-style')?.remove();
-  document.getElementById('custom-lyrics-settings-style')?.remove(); // Remove settings
 
   // Restore original content visibility
   if (originalPageState.children) {
